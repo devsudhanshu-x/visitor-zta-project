@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Zero Trust Visitor Access{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<header class="topbar">
+  <a href="/" class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-text">ZT<span class="brand-accent">/</span>VISITOR</span>
+  </a>
+
+  <nav class="topnav">
+    <a href="/visitor/register-page">Register Visit</a>
+    <a href="/host/dashboard">Host Dashboard</a>
+    <a href="/security-console">Security Console</a>
+    <a href="/audit/log">Audit Log</a>
+  </nav>
+
+  <div class="session-indicator">
+    <span class="pulse-dot" aria-hidden="true"></span>
+    <span class="mono">SYSTEM ACTIVE</span>
+  </div>
+</header>
+
+<main class="page">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-stack">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="footer mono">
+  Zero Trust Visitor Identity &amp; JIT Access Management — Field Project
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Audit Log — ZT/Visitor{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <span class="eyebrow">Audit Trail</span>
+  <h1>Access attempt log</h1>
+  <p class="subhead">Every attempt is recorded — granted or denied. Refreshes automatically every 5 seconds.</p>
+</div>
+
+<div class="log-list">
+  <div class="log-row log-header">
+    <span>Time</span>
+    <span>Visit</span>
+    <span>Result</span>
+    <span>Reason</span>
+  </div>
+  <div id="logBody"></div>
+</div>
+
+<div id="logEmpty" class="empty-state" style="display:none;">No access attempts yet. Try the access simulator.</div>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

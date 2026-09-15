@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Host Dashboard — ZT/Visitor{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <span class="eyebrow">Policy Enforcement</span>
+  <h1>Pending approvals</h1>
+  <p class="subhead">Visits routed here by the policy engine because they target a medium or high-risk resource. Nothing is granted until you decide.</p>
+</div>
+
+<div class="panel">
+  <div id="pendingEmpty" class="empty-state">Loading pending visits…</div>
+  <div id="pendingList" style="display:none;"></div>
+</div>
+
+<script>
+async function loadPending() {
+  const res = await fetch("/policy/pending");
+  const visits = await res.json();
+
+  const empty = document.getElementById("pendingEmpty");
+  const list = document.getElementById("pendingList");
+
+  if (!res.ok || visits.length === 0) {
+    empty.textContent = res.ok ? "No visits waiting for review." : "Sign in as a host to view this list.";
+    empty.style.display = "block";
+    list.style.display = "none";
+    return;
+  }
+
+  empty.style.display = "none";
+  list.style.display = "block";
+  list.innerHTML = "";
+
+  visits.forEach(v => {
+    const row = document.createElement("div");
+    row.className = "panel";
+    row.style.marginBottom = "12px";
+    row.innerHTML = `
+      <p class="subhead mono">Visit #${v.visit_id} — Visitor #${v.visitor_id} — Resource #${v.resource_id}</p>
+      <p style="margin: 8px 0;">${v.purpose || "No purpose given"}</p>
+      <p class="subhead mono">${v.scheduled_start} → ${v.scheduled_end}</p>
+      <div class="btn-row">
+        <button class="btn" onclick="decide(${v.visit_id}, 'approve')">Approve</button>
+        <button class="btn btn-deny" onclick="decide(${v.visit_id}, 'deny')">Deny</button>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+async function decide(visitId, action) {
+  const res = await fetch(`/policy/${action}/${visitId}`, { method: "POST" });
+  const data = await res.json();
+  if (!res.ok) { alert(data.error); return; }
+  loadPending();
+}
+
+loadPending();
+</script>
+{% endblock %}

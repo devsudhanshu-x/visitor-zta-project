@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Security Console — ZT/Visitor{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <span class="eyebrow">Real-Time Monitoring</span>
+  <h1>Security Console</h1>
+  <p class="subhead">Live view of every currently checked-in visitor, their device posture, and one-click revocation.</p>
+</div>
+
+<div class="panel-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 28px;">
+  <div class="panel" style="margin-bottom:0;">
+    <p class="subhead" style="margin:0;">Active sessions</p>
+    <h2 id="statActive" style="margin:8px 0 0;">—</h2>
+  </div>
+  <div class="panel" style="margin-bottom:0;">
+    <p class="subhead" style="margin:0;">Authorization accuracy</p>
+    <h2 id="statAccuracy" style="margin:8px 0 0;">—</h2>
+  </div>
+  <div class="panel" style="margin-bottom:0;">
+    <p class="subhead" style="margin:0;">Total denied</p>
+    <h2 id="statDenied" style="margin:8px 0 0;">—</h2>
+  </div>
+  <div class="panel" style="margin-bottom:0;">
+    <p class="subhead" style="margin:0;">Revoked tokens</p>
+    <h2 id="statRevoked" style="margin:8px 0 0;">—</h2>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Currently checked in</h2>
+  <div id="consoleEmpty" class="empty-state">No active sessions right now.</div>
+  <div id="consoleList"></div>
+</div>
+
+<script>
+async function loadStats() {
+  const res = await fetch("/console/stats");
+  if (!res.ok) return;
+  const s = await res.json();
+  document.getElementById("statActive").textContent = s.active_sessions;
+  document.getElementById("statAccuracy").textContent = s.authorization_accuracy_pct + "%";
+  document.getElementById("statDenied").textContent = s.denied;
+  document.getElementById("statRevoked").textContent = s.revoked_tokens;
+}
+
+async function loadActive() {
+  const res = await fetch("/console/active-visits");
+  if (!res.ok) return;
+  const visits = await res.json();
+
+  const empty = document.getElementById("consoleEmpty");
+  const list = document.getElementById("consoleList");
+
+  if (visits.length === 0) {
+    empty.style.display = "block";
+    list.innerHTML = "";
+    return;
+  }
+  empty.style.display = "none";
+
+  list.innerHTML = visits.map(v => `
+    <div class="panel" style="margin-bottom: 12px;">
+      <p class="subhead mono">Visit #${v.visit_id} — ${v.visitor_name}</p>
+      <p style="margin: 8px 0;">
+        Resource: <strong>${v.resource_name}</strong>
+        (<span class="pill pill-${v.resource_risk === 'high' ? 'denied' : 'granted'}">${v.resource_risk} risk</span>)
+      </p>
+      <p class="subhead">
+        Device posture:
+        <span class="pill pill-${v.device_posture === 'trusted' ? 'granted' : 'denied'}">${v.device_posture}</span>
+      </p>
+      <p class="subhead mono">Expires: ${v.expires_at}</p>
+      <button class="btn btn-deny" style="margin-top:10px;" onclick="revoke(${v.visit_id})">Revoke access now</button>
+    </div>
+  `).join("");
+}
+
+async function revoke(visitId) {
+  const res = await fetch(`/console/revoke/${visitId}`, { method: "POST" });
+  if (res.ok) {
+    loadActive();
+    loadStats();
+  }
+}
+
+loadStats();
+loadActive();
+setInterval(() => { loadStats(); loadActive(); }, 5000);
+</script>
+{% endblock %}

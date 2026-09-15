@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Register Visit — ZT/Visitor{% endblock %}
+{% block content %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<div class="page-head">
+  <span class="eyebrow">Step 01 — Request</span>
+  <h1>Register a visit</h1>
+  <p class="subhead">Every request is scoped to one host, one resource, and one exact time window — nothing broader is ever granted.</p>
+</div>
+
+<div class="panel-grid">
+
+  <div class="panel">
+    <h2>Visitor details</h2>
+    <form id="registerForm">
+      <div class="field">
+        <label for="full_name">Full name</label>
+        <input type="text" id="full_name" required>
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" required>
+      </div>
+      <div class="field">
+        <label for="phone">Phone</label>
+        <input type="text" id="phone">
+      </div>
+      <div class="field">
+        <label for="id_proof_ref">ID proof reference (e.g. Aadhaar last 4 digits)</label>
+        <input type="text" id="id_proof_ref" maxlength="20">
+      </div>
+      <div class="field">
+        <label for="host_id">Host ID</label>
+        <input type="number" id="host_id" required>
+      </div>
+      <div class="field">
+        <label for="resource_id">Resource ID</label>
+        <input type="number" id="resource_id" required>
+      </div>
+      <div class="field">
+        <label for="purpose">Purpose of visit</label>
+        <input type="text" id="purpose">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="scheduled_start">Start time</label>
+          <input type="datetime-local" id="scheduled_start" required>
+        </div>
+        <div class="field">
+          <label for="scheduled_end">End time</label>
+          <input type="datetime-local" id="scheduled_end" required>
+        </div>
+      </div>
+      <button type="submit" class="btn">Submit request</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h2>Decision</h2>
+    <div id="decisionEmpty" class="empty-state">Submit a request to see the policy engine's decision here.</div>
+    <div id="decisionResult" style="display:none;">
+      <p class="subhead">Visit ID: <span id="resVisitId" class="mono"></span></p>
+      <p style="margin: 14px 0;"><span id="resPill" class="pill"></span></p>
+      <p class="subhead" id="resReason"></p>
+
+      <div id="checkinBlock" style="display:none; margin-top: 20px;">
+        <div class="field">
+          <label for="devicePosture">Device posture (simulated)</label>
+          <select id="devicePosture">
+            <option value="trusted">Trusted device</option>
+            <option value="untrusted">Untrusted device</option>
+          </select>
+        </div>
+        <button id="checkinBtn" class="btn">Check in now</button>
+      </div>
+
+      <div id="tokenBlock" style="display:none; margin-top: 20px;">
+        <label style="display:block; font-size:0.82rem; color:var(--text-dim); margin-bottom:8px;">QR pass</label>
+        <div id="qrCodeBox" style="background:#fff; padding:16px; border-radius:8px; display:inline-block;"></div>
+
+        <label style="display:block; font-size:0.82rem; color:var(--text-dim); margin:16px 0 8px;">Issued access token</label>
+        <div class="token-box" id="tokenValue"></div>
+        <button id="copyTokenBtn" class="btn btn-ghost" style="margin-top: 10px;">Copy token</button>
+        <p class="subhead" style="margin-top:10px;">Expires: <span id="tokenExpiry" class="mono"></span></p>
+        <button id="checkoutBtn" class="btn btn-ghost" style="margin-top: 14px;">Check out / revoke now</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let currentVisitId = null;
+
+document.getElementById("registerForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const payload = {
+    full_name: document.getElementById("full_name").value,
+    email: document.getElementById("email").value,
+    phone: document.getElementById("phone").value,
+    id_proof_ref: document.getElementById("id_proof_ref").value,
+    host_id: parseInt(document.getElementById("host_id").value),
+    resource_id: parseInt(document.getElementById("resource_id").value),
+    purpose: document.getElementById("purpose").value,
+    scheduled_start: document.getElementById("scheduled_start").value,
+    scheduled_end: document.getElementById("scheduled_end").value,
+  };
+
+  const res = await fetch("/visitor/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+
+  document.getElementById("decisionEmpty").style.display = "none";
+  document.getElementById("decisionResult").style.display = "block";
+
+  if (!res.ok) {
+    document.getElementById("resVisitId").textContent = "—";
+    document.getElementById("resPill").className = "pill pill-denied";
+    document.getElementById("resPill").textContent = "error";
+    document.getElementById("resReason").textContent = data.error;
+    return;
+  }
+
+  currentVisitId = data.visit_id;
+  document.getElementById("resVisitId").textContent = data.visit_id;
+  document.getElementById("resPill").className = "pill pill-" + data.decision;
+  document.getElementById("resPill").textContent = data.decision.replace("_", " ");
+  document.getElementById("resReason").textContent = data.reason;
+
+  document.getElementById("checkinBlock").style.display = data.decision === "approved" ? "block" : "none";
+  document.getElementById("tokenBlock").style.display = "none";
+});
+
+document.getElementById("checkinBtn").addEventListener("click", async () => {
+  const devicePosture = document.getElementById("devicePosture").value;
+
+  const res = await fetch(`/visitor/checkin/${currentVisitId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ device_posture: devicePosture })
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data.error);
+    return;
+  }
+
+  document.getElementById("tokenValue").textContent = data.token;
+  document.getElementById("tokenExpiry").textContent = data.expires_at;
+  document.getElementById("tokenBlock").style.display = "block";
+  document.getElementById("checkinBlock").style.display = "none";
+
+  // Draw the QR code from the issued token
+  const qrBox = document.getElementById("qrCodeBox");
+  qrBox.innerHTML = "";
+  new QRCode(qrBox, {
+    text: data.token,
+    width: 180,
+    height: 180,
+  });
+});
+
+document.getElementById("copyTokenBtn").addEventListener("click", () => {
+  const tokenText = document.getElementById("tokenValue").textContent;
+  navigator.clipboard.writeText(tokenText).then(() => {
+    const btn = document.getElementById("copyTokenBtn");
+    const original = btn.textContent;
+    btn.textContent = "Copied!";
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  });
+});
+
+document.getElementById("checkoutBtn").addEventListener("click", async () => {
+  const res = await fetch(`/visitor/checkout/${currentVisitId}`, { method: "POST" });
+  const data = await res.json();
+  if (res.ok) {
+    document.getElementById("tokenBlock").style.display = "none";
+    document.getElementById("resReason").textContent = "Checked out — token revoked immediately.";
+  }
+});
+</script>
+{% endblock %}

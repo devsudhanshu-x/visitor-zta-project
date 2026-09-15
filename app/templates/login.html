@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Host Login — ZT/Visitor{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <span class="eyebrow">Host Authentication</span>
+  <h1>Sign in to review visits</h1>
+  <p class="subhead">Hosts approve visit requests routed to manual review and can revoke access instantly.</p>
+</div>
+
+<div class="panel" style="max-width: 420px;">
+  <form id="loginForm">
+    <div class="field">
+      <label for="email">Work email</label>
+      <input type="email" id="email" name="email" required autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required autocomplete="current-password">
+    </div>
+    <button type="submit" class="btn">Sign in</button>
+  </form>
+  <p id="loginMsg" class="subhead" style="margin-top: 14px;"></p>
+</div>
+
+<script>
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const msg = document.getElementById("loginMsg");
+
+  const res = await fetch("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  });
+  const data = await res.json();
+
+  if (res.ok) {
+    window.location.href = "/host/dashboard";
+  } else {
+    msg.textContent = data.error || "Login failed";
+    msg.style.color = "var(--accent-denied)";
+  }
+});
+</script>
+{% endblock %}

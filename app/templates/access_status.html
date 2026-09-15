@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Access Simulator — ZT/Visitor{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <span class="eyebrow">Policy Enforcement Point</span>
+  <h1>Simulate a door reader</h1>
+  <p class="subhead">Paste a visitor's token and try a resource ID. This runs the exact same check a real badge reader would — signature, expiry, revocation, and scope, every single time.</p>
+</div>
+
+<div class="panel" style="max-width: 560px;">
+  <div class="field">
+    <label for="tokenInput">Access token</label>
+    <textarea id="tokenInput" rows="4" class="mono" style="resize: vertical;"></textarea>
+  </div>
+  <div class="field">
+    <label for="resourceInput">Resource ID to attempt</label>
+    <input type="number" id="resourceInput">
+  </div>
+  <button id="checkBtn" class="btn">Attempt access</button>
+
+  <div id="resultBox" style="margin-top: 22px; display: none;">
+    <span id="resultPill" class="pill"></span>
+    <p id="resultDetail" class="subhead" style="margin-top: 10px;"></p>
+  </div>
+</div>
+
+<script>
+document.getElementById("checkBtn").addEventListener("click", async () => {
+  const token = document.getElementById("tokenInput").value.trim();
+  const resource_id = parseInt(document.getElementById("resourceInput").value);
+
+  const res = await fetch("/access/check", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, resource_id })
+  });
+  const data = await res.json();
+
+  const box = document.getElementById("resultBox");
+  const pill = document.getElementById("resultPill");
+  const detail = document.getElementById("resultDetail");
+
+  box.style.display = "block";
+  if (data.access === "granted") {
+    pill.className = "pill pill-granted";
+    pill.textContent = "access granted";
+    detail.textContent = `Visit #${data.visit_id} verified for resource #${resource_id}.`;
+  } else {
+    pill.className = "pill pill-denied";
+    pill.textContent = (data.reason || "denied").replace(/_/g, " ");
+    detail.textContent = "This attempt has been written to the audit log.";
+  }
+});
+</script>
+{% endblock %}
