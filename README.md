@@ -521,9 +521,11 @@ The project also provides practical experience in **backend development, databas
 ## 👨‍💻 Authors
 
 **Sudhanshu Singh**
+
 Backend & Database Developer
 
 **Isa Khatri**
+
 Frontend Developer
 
 ---
